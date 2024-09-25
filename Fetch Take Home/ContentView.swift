@@ -8,14 +8,23 @@
 import SwiftUI
 
 struct ContentView: View {
+    @State var remoteItemsByListId: [Int : [RemoteItem]] = [:]
+    
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        List(remoteItemsByListId.keys.sorted(), id: \.self) { listId in
+            if let items = remoteItemsByListId[listId] {
+                Section(header: Text("List \(listId)")) {
+                    ForEach(items) { item in
+                        Text("\(item.name ?? "")")
+                    }
+                }
+            }
         }
-        .padding()
+        .task {
+            if let result = try? await RemoteItem.pullItems() {
+                self.remoteItemsByListId = result.filterAllEmptyOrNullNames().groupByListId()
+            }
+        }
     }
 }
 
