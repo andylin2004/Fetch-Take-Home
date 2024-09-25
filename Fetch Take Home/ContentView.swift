@@ -11,18 +11,34 @@ struct ContentView: View {
     @State var remoteItemsByListId: [Int : [RemoteItem]] = [:]
     
     var body: some View {
-        List(remoteItemsByListId.keys.sorted(), id: \.self) { listId in
-            if let items = remoteItemsByListId[listId] {
-                Section(header: Text("List \(listId)")) {
-                    ForEach(items) { item in
-                        Text("\(item.name ?? "")")
-                    }
-                }
+        NavigationStack {
+            List(remoteItemsByListId.keys.sorted(), id: \.self) { listId in
+                ListIDGroupView(listId: listId, remoteItemsByListId: $remoteItemsByListId)
             }
+            .listStyle(.sidebar)
+            .navigationTitle("Remote Items")
         }
         .task {
             if let result = try? await RemoteItem.pullItems() {
                 self.remoteItemsByListId = result.filterAllEmptyOrNullNames().groupByListId()
+            }
+        }
+    }
+    
+    struct ListIDGroupView: View {
+        var listId: Int
+        
+        @Binding var remoteItemsByListId: [Int : [RemoteItem]]
+        @State var isExpanded = false
+        
+        var body: some View {
+            if let items = remoteItemsByListId[listId]?.sortByName() {
+                Section("List \(listId)", isExpanded: $isExpanded) {
+                    ForEach(items) { item in
+                        Text("\(item.name ?? "")")
+                    }
+                }
+                .headerProminence(.increased)
             }
         }
     }

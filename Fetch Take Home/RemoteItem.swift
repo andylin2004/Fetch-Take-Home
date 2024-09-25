@@ -46,4 +46,10 @@ extension [RemoteItem] {
         
         return dict
     }
+    
+    func sortByName() -> [RemoteItem] {
+        return self.sorted { a, b in
+            a.name ?? "" < b.name ?? ""
+        }
+    }
 }
