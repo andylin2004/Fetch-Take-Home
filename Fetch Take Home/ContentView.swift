@@ -7,6 +7,7 @@
 
 import SwiftUI
 
+// this view hosts the whole list, including the navigation bar. This list uses a subview for each section. This view also handles the inital task of getting all remote items
 struct ContentView: View {
     @State var remoteItemsByListId: [Int : [RemoteItem]] = [:]
     
@@ -25,6 +26,7 @@ struct ContentView: View {
         }
     }
     
+    // this view is here because each section of a list has a disclosure header that allows the rest of the list to show up or disappear
     struct ListIDGroupView: View {
         var listId: Int
         
@@ -32,7 +34,8 @@ struct ContentView: View {
         @State var isExpanded = false
         
         var body: some View {
-            if let items = remoteItemsByListId[listId]?.sortByName() {
+            // we only make a section if the remote items for
+            if let items = remoteItemsByListId[listId]?.sortByName(), !items.isEmpty {
                 Section("List \(listId)", isExpanded: $isExpanded) {
                     ForEach(items) { item in
                         Text("\(item.name ?? "")")
