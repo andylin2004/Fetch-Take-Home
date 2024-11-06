@@ -9,23 +9,21 @@ import SwiftUI
 
 // this view hosts the whole list, including the navigation bar. This list uses a subview for each section. This view also handles the initial task of getting all remote items
 struct ContentView: View {
-    // this variable contains all the remote items
-    @State private var remoteItemsByListId: [Int : [RemoteItem]] = [:]
-    
-    // this variable indicates the view state (loaded, unloaded, error)
-    @State private var loadingStatus: LoadingStatus = .notLoadedYet
+    @StateObject var viewModel = ContentView_ViewModel()
     
     var body: some View {
         NavigationStack {
             Group {
-                switch loadingStatus {
-                case .loaded:
+                switch viewModel.loadingStatus {
+                case .loaded(let remoteItemsByListId):
                     List(remoteItemsByListId.keys.sorted(), id: \.self) { listId in
-                        ListIDGroupView(listId: listId, remoteItemsByListId: $remoteItemsByListId)
+                        if let dictValues = remoteItemsByListId[listId] {
+                            ListIDGroupView(listId: listId, remoteItems: dictValues)
+                        }
                     }
                     .listStyle(.sidebar)
                     .refreshable {
-                        await loadItems()
+                        await viewModel.loadItems()
                     }
                 case .error(let error):
                     ContentUnavailableView {
@@ -35,8 +33,7 @@ struct ContentView: View {
                     } actions: {
                         Button {
                             Task {
-                                loadingStatus = .notLoadedYet
-                                await loadItems()
+                                await viewModel.loadItemsFromErrorOrNotLoaded()
                             }
                         } label: {
                             Label("Try loading again?", systemImage: "arrow.clockwise")
@@ -50,8 +47,7 @@ struct ContentView: View {
             .navigationTitle("Remote Items")
         }
         .task {
-            loadingStatus = .notLoadedYet
-            await loadItems()
+            await viewModel.loadItemsFromErrorOrNotLoaded()
         }
     }
     
@@ -59,36 +55,19 @@ struct ContentView: View {
     private struct ListIDGroupView: View {
         var listId: Int
         
-        @Binding var remoteItemsByListId: [Int : [RemoteItem]]
+        var remoteItems: [RemoteItem]
         @State var isExpanded = false
         
         var body: some View {
             // we only make a section if the remote items for
-            if let items = remoteItemsByListId[listId]?.sortByName(), !items.isEmpty {
+            if !remoteItems.isEmpty {
                 Section("List \(listId)", isExpanded: $isExpanded) {
-                    ForEach(items) { item in
+                    ForEach(remoteItems.sortByName()) { item in
                         Text("\(item.name ?? "")")
                     }
                 }
                 .headerProminence(.increased)
             }
-        }
-    }
-    
-    private enum LoadingStatus {
-        case notLoadedYet
-        case loaded
-        case error(Error)
-    }
-    
-    // this function will attempt to load in all remote items from the remote source, or set a view state variable to show an error screen
-    private func loadItems() async {
-        do {
-            let result = try await RemoteItem.pullItems()
-            self.remoteItemsByListId = result.filterAllEmptyOrNullNames().groupByListId()
-            loadingStatus = .loaded
-        } catch {
-            loadingStatus = .error(error)
         }
     }
 }
