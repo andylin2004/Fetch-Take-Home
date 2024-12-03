@@ -9,7 +9,7 @@ import Foundation
 
 // this struct allows us to decode the remoteitem from the remote source, as well as pull from the remote source
 // struct variable names are the same as the json names, as this will make decoding super easy for us
-struct RemoteItem: Codable, Identifiable {
+struct RemoteItem: Codable, Identifiable, Equatable {
     let id: Int
     let listId: Int
     let name: String?
@@ -26,6 +26,34 @@ struct RemoteItem: Codable, Identifiable {
         } else {
             throw URLError(.badURL)
         }
+    }
+}
+
+struct ItemFetcher: GetDataProtocol {
+    func pullItems() async throws -> [RemoteItem] {
+        let url = URL(string: "https://fetch-hiring.s3.amazonaws.com/hiring.json")
+        if let url = url {
+            let (pulledData, _) = try await URLSession.shared.data(from: url)
+            
+            let decoder = JSONDecoder()
+            
+            return try decoder.decode([RemoteItem].self, from: pulledData)
+        } else {
+            throw URLError(.badURL)
+        }
+    }
+}
+
+struct MockItemFetcher: GetDataProtocol {
+    func pullItems() async throws -> [RemoteItem] {
+        let mockData = [
+            RemoteItem(id: 1, listId: 1, name: "Uno"),
+            RemoteItem(id: 2, listId: 1, name: "UnoDos"),
+            RemoteItem(id: 3, listId: 2, name: "Uno"),
+            RemoteItem(id: 3, listId: 2, name: "UnoDos")
+        ]
+        
+        return mockData
     }
 }
 
